@@ -1,0 +1,121 @@
+# Sample workflow for building and deploying a Jekyll site to GitHub Pages
+name: Build and Deploy Website (seperated repos)
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Clone source repository (PRIVATE repository)
+        uses: GuillaumeFalourd/clone-github-repo-action@v2.2
+        with:
+          owner: 'IPv6Plus'
+          repository: 'ipv6plus-src'
+          branch: 'master'
+          access-token: ${{ secrets.IPV6PLUS_CLONE_KEY_ANOTHER }}
+      
+      - run: ls -al
+      - name: Remove embeded assets
+        working-directory: ./ipv6plus-src/
+        run: rm -rf assets
+      - name: Remove embeded resources
+        working-directory: ./ipv6plus-src/
+        run: rm -rf resources
+
+      - name: Integrate assets 1 (PRIVATE repository)
+        uses: GuillaumeFalourd/clone-github-repo-action@v2.2
+        with:
+          owner: 'IPv6Plus'
+          repository: 'IPv6Plus.github.io-assets'
+          branch: 'master'
+          access-token: ${{ secrets.IPV6PLUS_CLONE_KEY_ANOTHER }}
+      - name: Integrate assets 2 (PRIVATE repository)
+        run: mv IPv6Plus.github.io-assets ./ipv6plus-src/assets/
+          
+      - name: Integrate resources (PRIVATE repository)
+        uses: GuillaumeFalourd/clone-github-repo-action@v2.2
+        with:
+          owner: 'IPv6Plus'
+          repository: 'IPv6Plus.github.io-resources'
+          branch: 'master'
+          access-token: ${{ secrets.IPV6PLUS_CLONE_KEY_ANOTHER }}
+      - name: Integrate resources 2 (PRIVATE repository)
+        run: mv IPv6Plus.github.io-resources ./ipv6plus-src/resources/
+
+      - name: Remove Allow robots.txt
+        run: rm ./ipv6plus-src/robots.txt
+      - name: Add Disallow robots.txt
+        run: cp ./robots.txt ./ipv6plus-src/
+        
+      - name: Show Directories of Source
+        working-directory: ./ipv6plus-src/
+        run: ls -al
+      - name: Show All Files of Source
+        working-directory: ./ipv6plus-src/
+        run: find
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./ipv6plus-src/
+          destination: ./_site
+        
+      - name: Show Directories of Product
+        working-directory: ./_site/
+        run: ls -al
+      - name: Show All Files Product
+        working-directory: ./_site/
+        run: find
+
+      # - uses: actions/setup-node@v3
+      #   with:
+      #     node-version: 16
+      #     registry-url: https://npm.pkg.github.com/
+      # - name: Prepare website
+      #   run: cp -rf ./_site/* ./.npm-release-binary/
+      # - name: Pre-release website artifact
+      #   working-directory: ./.npm-release-binary/
+      #   run: npm version prerelease --preid C-$(date +%Y-%m-%d-%H.%M.%S)
+      # - name: Publish Github Package
+      #   run: npm publish
+      #   working-directory: ./.npm-release-binary/
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
