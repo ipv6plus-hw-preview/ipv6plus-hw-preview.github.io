@@ -4,6 +4,14 @@ name: Build and Deploy Website (seperated repos)
 on:
   schedule:
     - cron: '*/5 * * * *'
+  push:
+    branches: [ "*" ]
+    # Build semver tags as releases.
+    tags: [ '*.*' ]
+  pull_request:
+    branches: [ "*" ]
+    # Build semver tags as releases.
+    tags: [ '*.*' ]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
